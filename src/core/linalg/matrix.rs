@@ -55,6 +55,7 @@ impl<T> IndexMut<(usize, usize)> for Matrix<T> {
 
 impl<T: Add<Output = T> + Clone + Default> Add for Matrix<T> {
     type Output = Matrix<T>;
+
     fn add(self, other: Matrix<T>) -> Matrix<T> {
         assert_eq!(self.n, other.n, "First dimesion mismatch: {} & {}", self.n, other.n);
         assert_eq!(self.m, other.m, "Second dimesion mismatch: {} & {}", self.m, other.m);
@@ -65,12 +66,14 @@ impl<T: Add<Output = T> + Clone + Default> Add for Matrix<T> {
                 result[(i, j)] = self[(i, j)].clone() + other[(i, j)].clone();
             }
         }
+        
         result
     }
 }
 
 impl<T: Add<Output = T> + Mul<Output = T> + Clone + Default> Mul for Matrix<T> {
     type Output = Matrix<T>;
+
     fn mul(self, other: Matrix<T>) -> Matrix<T> {
         assert_eq!(self.m, other.n, "Dimesions mismatch: {}x{} & {}x{}", self.n, self.m, other.n, other.m);
 
@@ -82,6 +85,7 @@ impl<T: Add<Output = T> + Mul<Output = T> + Clone + Default> Mul for Matrix<T> {
                 }
             }
         }
+
         result
     }
 }
