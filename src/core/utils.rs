@@ -15,3 +15,10 @@ pub fn printVector<T: std::fmt::Display>(vector: Vector<T>) {
         println!("{}", vector[i]);
     }
 }
+
+pub fn printVectorT<T: std::fmt::Display>(vector: Vector<T>) {
+    for i in 0..vector.n - 1 {
+        print!("{} ", vector[i]);
+    }
+    print!("{}", vector[vector.n - 1]);
+}
