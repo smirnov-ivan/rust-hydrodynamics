@@ -3,9 +3,9 @@ use std::io::{BufRead, BufReader};
 use std::str::FromStr;
 use crate::Vector;
 use std::ops::{Add, Sub, Mul, Div};
-use num_traits::{One};
-use std::fmt::{Debug};
-use std::cmp::PartialEq;
+use num_traits::{One, Signed};
+use std::fmt::{Debug, Display};
+use std::cmp::{PartialEq, PartialOrd};
 
 pub struct TridiogonalSystem<T> {
     n: usize,
@@ -14,9 +14,10 @@ pub struct TridiogonalSystem<T> {
     values: Vec<(T, T, T, T)>,
 }
 
-impl<T: Clone + Copy + Default + PartialEq +
-    One + FromStr + Debug +
-    Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Div<Output = T>
+impl<T: Clone + Copy + Default + PartialEq + PartialOrd +
+    One + FromStr + Debug + Signed +
+    Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Div<Output = T> +
+    Display
 > TridiogonalSystem<T> {
 
     pub fn load(path: &String) -> Result<Self, &'static str> {
@@ -114,8 +115,6 @@ impl<T: Clone + Copy + Default + PartialEq +
             let nbeta = betaNumerator / betaDenominator;
             beta.push(nbeta);
         }
-        println!("{:?}", alpha);
-        println!("{:?}", beta);
         result.push((self.right_bound.1 - beta[self.n - 2] * self.bound.1) / (T::one() + alpha[self.n - 2] * self.bound.1));
         
         for i in (0..alpha.len()).rev() {
@@ -125,6 +124,34 @@ impl<T: Clone + Copy + Default + PartialEq +
         result.reverse();
         Ok(Vector::from(result))
         //Ok(Vector::from(vec![T::default(); self.n]))
+    }
+
+    pub fn checkT1(&self) -> bool {
+        if self.bound.0.abs() > T::one() || self.bound.1.abs() >= T::one() {
+            return false;
+        };
+
+        for i in 0..self.values.len() {
+            if self.values[i].1.abs() < self.values[i].0.abs() + self.values[i].2.abs() {
+                return false;
+            }
+        }
+
+        true
+    }
+
+    pub fn checkT2(&self) -> bool {
+        if self.bound.0.abs() > T::one() || self.bound.1.abs() > T::one() {
+            return false;
+        };
+
+        for i in 0..self.values.len() {
+            if self.values[i].0 == T::default() || self.values[i].2 == T::default() || self.values[i].1.abs() <= self.values[i].0.abs() + self.values[i].2.abs() {
+                return false;
+            }
+        }
+
+        true
     }
 
 }
