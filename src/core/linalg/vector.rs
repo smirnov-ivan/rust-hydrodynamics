@@ -1,11 +1,12 @@
 use std::ops::{ Index, IndexMut, Add, Mul };
+use std::cmp::{ PartialOrd };
 
 pub struct Vector<T> {
     pub n: usize,
     values: Vec<T>,
 }
 
-impl<T: Clone + Default> Vector<T> {
+impl<T: Clone + Default + Copy + PartialOrd> Vector<T> {
 
     pub fn new(n: usize) -> Self {
         Vector { n: n, values: vec![T::default(); n] }
@@ -17,6 +18,16 @@ impl<T: Clone + Default> Vector<T> {
 
     pub fn clone(source: Vector<T>) -> Self {
         Vector { n: source.n, values: source.values.clone() }
+    }
+
+    pub fn norm(&self) -> T {
+        let mut result = T::default();
+        for i in 0..self.n {
+            if self.values[i] > result {
+                result = self.values[i];
+            }
+        }
+        result
     }
 
 }
@@ -35,7 +46,7 @@ impl<T> IndexMut<usize> for Vector<T> {
     }
 }
 
-impl<T: Add<Output = T> + Clone + Default> Add for Vector<T> {
+impl<T: Add<Output = T> + Clone + Default + Copy + PartialOrd> Add for Vector<T> {
     type Output = Vector<T>;
 
     fn add(self, other: Vector<T>) -> Vector<T> {
@@ -49,7 +60,7 @@ impl<T: Add<Output = T> + Clone + Default> Add for Vector<T> {
     }
 }
 
-impl<T: Add<Output = T> + Mul<Output = T> + Clone + Default> Mul for Vector<T> {
+impl<T: Add<Output = T> + Mul<Output = T> + Clone + Default + Copy + PartialOrd> Mul for Vector<T> {
     type Output = T;
 
     fn mul(self, other: Vector<T>) -> T {
