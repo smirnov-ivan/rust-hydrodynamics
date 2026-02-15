@@ -154,11 +154,22 @@ impl<T: Clone + Copy + Default + PartialEq + PartialOrd +
         true
     }
 
+    pub fn getRight(&self) -> Vector<T> {
+        let mut result: Vec<T> = Vec::new();
+        result.push(self.right_bound.0);
+        for value in &self.values {
+            result.push(value.3);
+        }
+        result.push(self.right_bound.1);
+        Vector::from(result)
+    }
+
 }
 
 impl<T:
     Default + Copy + PartialOrd +
-    Add<Output = T> + Sub<Output = T> + Mul<Output = T>
+    Add<Output = T> + Sub<Output = T> + Mul<Output = T> +
+    Display
 > Mul<&Vector<T>> for &TridiagonalSystem<T> {
     type Output = Vector<T>;
 
@@ -170,7 +181,7 @@ impl<T:
         for i in 1..=self.values.len() {
             result[i] = self.values[i - 1].0 * other[i - 1] - self.values[i - 1].1 * other[i] + self.values[i - 1].2 * other[i + 1];
         }
-        result[self.n - 1] = other[self.n - 1 - 1] - self.bound.1 * other[self.n - 1];
+        result[self.n] = other[self.n] - self.bound.1 * other[self.n - 1];
 
         Vector::from(result)
     }

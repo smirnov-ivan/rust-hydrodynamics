@@ -45,10 +45,16 @@ impl WSHandler {
                                             let t2 = system.checkT2();
                                             // TODO: add error handler
                                             let result = system.solve().expect("Can't solve system");
+                                            let operated = &system * &result;
+                                            let rightSide = system.getRight();
+                                            let residual = &operated - &rightSide;
                                             let output = json!({
                                                 "th1": t1,
                                                 "th2": t2,
-                                                "result": result
+                                                "result": result,
+                                                // "rightSide": rightSide,
+                                                // "operated": operated,
+                                                "residual": residual
                                             });
                                             sender.send(output.to_string().into()).await?;
                                         },
