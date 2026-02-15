@@ -1,7 +1,12 @@
-use std::ops::{ Index, IndexMut, Add, Mul };
+use std::ops::{ Index, IndexMut, Add, Sub, Mul };
 use std::cmp::{ PartialOrd };
+use serde::{Serialize, Serializer};
+use serde_json::json;
 
+
+//#[derive(Serialize)]
 pub struct Vector<T> {
+    //#[serde(skip)] 
     pub n: usize,
     values: Vec<T>,
 }
@@ -60,6 +65,20 @@ impl<T: Add<Output = T> + Clone + Default + Copy + PartialOrd> Add for Vector<T>
     }
 }
 
+impl<T: Sub<Output = T> + Clone + Default + Copy + PartialOrd> Sub for &Vector<T> {
+    type Output = Vector<T>;
+
+    fn sub(self, other: &Vector<T>) -> Vector<T> {
+        assert_eq!(self.n, other.n, "Dimesion mismatch: {} & {}", self.n, other.n);
+
+        let mut result: Vector<T> = Vector::new(self.n);
+        for i in 0..self.n {
+            result[i] = self[i].clone() - other[i].clone();
+        }
+        result
+    }
+}
+
 impl<T: Add<Output = T> + Mul<Output = T> + Clone + Default + Copy + PartialOrd> Mul for Vector<T> {
     type Output = T;
 
@@ -72,5 +91,14 @@ impl<T: Add<Output = T> + Mul<Output = T> + Clone + Default + Copy + PartialOrd>
         }
 
         result
+    }
+}
+
+impl<T: Serialize> Serialize for Vector<T> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.values.serialize(serializer)
     }
 }

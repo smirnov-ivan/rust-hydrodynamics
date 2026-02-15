@@ -1,13 +1,13 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::str::FromStr;
-use crate::Vector;
+use crate::core::linalg::vector::Vector;
 use std::ops::{Add, Sub, Mul, Div};
 use num_traits::{One, Signed};
 use std::fmt::{Debug, Display};
 use std::cmp::{PartialEq, PartialOrd};
 
-pub struct TridiogonalSystem<T> {
+pub struct TridiagonalSystem<T> {
     n: usize,
     bound: (T, T),
     right_bound: (T, T),
@@ -18,7 +18,7 @@ impl<T: Clone + Copy + Default + PartialEq + PartialOrd +
     One + FromStr + Debug + Signed +
     Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Div<Output = T> +
     Display
-> TridiogonalSystem<T> {
+> TridiagonalSystem<T> {
 
     pub fn load(path: &String) -> Result<Self, &'static str> {
         let fileP = File::open(path);
@@ -80,7 +80,7 @@ impl<T: Clone + Copy + Default + PartialEq + PartialOrd +
                     values.push((a, b, c, d));
                 }
                 Result::Ok(Self {
-                    n: values.len() + 2,
+                    n: values.len() + 1,
                     bound: (kappa1, kappa2),
                     right_bound: (mu1, mu2),
                     values: values,
@@ -154,4 +154,24 @@ impl<T: Clone + Copy + Default + PartialEq + PartialOrd +
         true
     }
 
+}
+
+impl<T:
+    Default + Copy + PartialOrd +
+    Add<Output = T> + Sub<Output = T> + Mul<Output = T>
+> Mul<&Vector<T>> for &TridiagonalSystem<T> {
+    type Output = Vector<T>;
+
+    fn mul(self, other: &Vector<T>) -> Vector<T> {
+        assert_eq!(self.n + 1, other.n, "Dimensions mismatch: {} + 1 & {}", self.n, other.n);
+
+        let mut result = vec![T::default(); self.n + 1];
+        result[0] = other[0] - self.bound.0 * other[1];
+        for i in 1..=self.values.len() {
+            result[i] = self.values[i - 1].0 * other[i - 1] - self.values[i - 1].1 * other[i] + self.values[i - 1].2 * other[i + 1];
+        }
+        result[self.n - 1] = other[self.n - 1 - 1] - self.bound.1 * other[self.n - 1];
+
+        Vector::from(result)
+    }
 }
