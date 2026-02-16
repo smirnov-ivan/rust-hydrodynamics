@@ -1,0 +1,4 @@
+[target.x86_64-pc-windows-gnu]
+linker = "E:\\msys64\\mingw64\\bin\\clang.exe"
+ar = "E:\\msys64\\mingw64\\bin\\llvm-ar.exe"
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]

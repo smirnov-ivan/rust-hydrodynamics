@@ -3,7 +3,7 @@ use std::io::{BufRead, BufReader};
 use std::str::FromStr;
 use crate::core::linalg::vector::Vector;
 use std::ops::{Add, Sub, Mul, Div};
-use num_traits::{One, Signed};
+use num_traits::{Zero, One, Signed};
 use std::fmt::{Debug, Display};
 use std::cmp::{PartialEq, PartialOrd};
 
@@ -14,7 +14,7 @@ pub struct TridiagonalSystem<T> {
     values: Vec<(T, T, T, T)>,
 }
 
-impl<T: Clone + Copy + Default + PartialEq + PartialOrd +
+impl<T: Clone + Zero + PartialEq + PartialOrd +
     One + FromStr + Debug + Signed +
     Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Div<Output = T> +
     Display
@@ -95,35 +95,35 @@ impl<T: Clone + Copy + Default + PartialEq + PartialOrd +
         let mut beta: Vec<T> = Vec::new();
         let mut result: Vec<T> = Vec::new();
 
-        alpha.push(self.bound.0);
-        beta.push(self.right_bound.0);
+        alpha.push(self.bound.0.clone());
+        beta.push(self.right_bound.0.clone());
 
         for i in 0..self.values.len() {
-            let alphaDenominator = self.values[i].1 - alpha[i] * self.values[i].0;
-            if alphaDenominator == T::default() {
+            let alphaDenominator = self.values[i].1.clone() - alpha[i].clone() * self.values[i].0.clone();
+            if alphaDenominator == T::zero() {
                 return Err("Solution doesn't exist");
             }
-            let nalpha = self.values[i].2 / alphaDenominator; 
+            let nalpha = self.values[i].2.clone() / alphaDenominator; 
             alpha.push(nalpha);
 
             // инвертировал последнее, так как в наших обозачениях правая часть -fi
-            let betaNumerator = beta[i] * self.values[i].0 - self.values[i].3;
-            let betaDenominator = self.values[i].1 - alpha[i] * self.values[i].0;
-            if betaDenominator == T::default() {
+            let betaNumerator = beta[i].clone() * self.values[i].0.clone() - self.values[i].3.clone();
+            let betaDenominator = self.values[i].1.clone() - alpha[i].clone() * self.values[i].0.clone();
+            if betaDenominator == T::zero() {
                 return Err("Solution doesn't exist");
             }
             let nbeta = betaNumerator / betaDenominator;
             beta.push(nbeta);
         }
-        result.push((self.right_bound.1 - beta[self.n - 2] * self.bound.1) / (T::one() + alpha[self.n - 2] * self.bound.1));
+        result.push((self.right_bound.1.clone() - beta[self.n - 2].clone() * self.bound.1.clone()) / (T::one() + alpha[self.n - 2].clone() * self.bound.1.clone()));
         
         for i in (0..alpha.len()).rev() {
-            result.push(alpha[i] * result[result.len() - 1] + beta[i]);
+            result.push(alpha[i].clone() * result[result.len() - 1].clone() + beta[i].clone());
         }
 
         result.reverse();
         Ok(Vector::from(result))
-        //Ok(Vector::from(vec![T::default(); self.n]))
+        //Ok(Vector::from(vec![T::zero(); self.n]))
     }
 
     pub fn checkT1(&self) -> bool {
@@ -146,7 +146,7 @@ impl<T: Clone + Copy + Default + PartialEq + PartialOrd +
         };
 
         for i in 0..self.values.len() {
-            if self.values[i].0 == T::default() || self.values[i].2 == T::default() || self.values[i].1.abs() <= self.values[i].0.abs() + self.values[i].2.abs() {
+            if self.values[i].0 == T::zero() || self.values[i].2 == T::zero() || self.values[i].1.abs() <= self.values[i].0.abs() + self.values[i].2.abs() {
                 return false;
             }
         }
@@ -156,32 +156,32 @@ impl<T: Clone + Copy + Default + PartialEq + PartialOrd +
 
     pub fn getRight(&self) -> Vector<T> {
         let mut result: Vec<T> = Vec::new();
-        result.push(self.right_bound.0);
+        result.push(self.right_bound.0.clone());
         for value in &self.values {
-            result.push(value.3);
+            result.push(value.3.clone());
         }
-        result.push(self.right_bound.1);
+        result.push(self.right_bound.1.clone());
         Vector::from(result)
     }
 
 }
 
 impl<T:
-    Default + Copy + PartialOrd +
+    Zero + PartialOrd +
     Add<Output = T> + Sub<Output = T> + Mul<Output = T> +
-    Display
+    Display + Signed + Clone
 > Mul<&Vector<T>> for &TridiagonalSystem<T> {
     type Output = Vector<T>;
 
     fn mul(self, other: &Vector<T>) -> Vector<T> {
         assert_eq!(self.n + 1, other.n, "Dimensions mismatch: {} + 1 & {}", self.n, other.n);
 
-        let mut result = vec![T::default(); self.n + 1];
-        result[0] = other[0] - self.bound.0 * other[1];
+        let mut result = vec![T::zero(); self.n + 1];
+        result[0] = other[0].clone() - self.bound.0.clone() * other[1].clone();
         for i in 1..=self.values.len() {
-            result[i] = self.values[i - 1].0 * other[i - 1] - self.values[i - 1].1 * other[i] + self.values[i - 1].2 * other[i + 1];
+            result[i] = self.values[i - 1].0.clone() * other[i - 1].clone() - self.values[i - 1].1.clone() * other[i].clone() + self.values[i - 1].2.clone() * other[i + 1].clone();
         }
-        result[self.n] = other[self.n] - self.bound.1 * other[self.n - 1];
+        result[self.n] = other[self.n].clone() - self.bound.1.clone() * other[self.n - 1].clone();
 
         Vector::from(result)
     }

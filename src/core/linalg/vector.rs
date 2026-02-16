@@ -2,6 +2,7 @@ use std::ops::{ Index, IndexMut, Add, Sub, Mul };
 use std::cmp::{ PartialOrd };
 use serde::{Serialize, Serializer};
 use serde_json::json;
+use num_traits::{Signed, Zero};
 
 
 //#[derive(Serialize)]
@@ -11,10 +12,10 @@ pub struct Vector<T> {
     values: Vec<T>,
 }
 
-impl<T: Clone + Default + Copy + PartialOrd> Vector<T> {
+impl<T: Clone + Zero + PartialOrd + Signed> Vector<T> {
 
     pub fn new(n: usize) -> Self {
-        Vector { n: n, values: vec![T::default(); n] }
+        Vector { n: n, values: vec![T::zero(); n] }
     }
 
     pub fn from(array: Vec<T>) -> Self {
@@ -26,10 +27,10 @@ impl<T: Clone + Default + Copy + PartialOrd> Vector<T> {
     }
 
     pub fn norm(&self) -> T {
-        let mut result = T::default();
+        let mut result = T::zero();
         for i in 0..self.n {
-            if self.values[i] > result {
-                result = self.values[i];
+            if self.values[i].abs() > result {
+                result = self.values[i].abs();
             }
         }
         result
@@ -51,7 +52,7 @@ impl<T> IndexMut<usize> for Vector<T> {
     }
 }
 
-impl<T: Add<Output = T> + Clone + Default + Copy + PartialOrd> Add for Vector<T> {
+impl<T: Add<Output = T> + Clone + Zero + PartialOrd + Signed> Add for Vector<T> {
     type Output = Vector<T>;
 
     fn add(self, other: Vector<T>) -> Vector<T> {
@@ -65,7 +66,7 @@ impl<T: Add<Output = T> + Clone + Default + Copy + PartialOrd> Add for Vector<T>
     }
 }
 
-impl<T: Sub<Output = T> + Clone + Default + Copy + PartialOrd> Sub for &Vector<T> {
+impl<T: Sub<Output = T> + Clone + Zero + PartialOrd + Signed> Sub for &Vector<T> {
     type Output = Vector<T>;
 
     fn sub(self, other: &Vector<T>) -> Vector<T> {
@@ -79,13 +80,13 @@ impl<T: Sub<Output = T> + Clone + Default + Copy + PartialOrd> Sub for &Vector<T
     }
 }
 
-impl<T: Add<Output = T> + Mul<Output = T> + Clone + Default + Copy + PartialOrd> Mul for Vector<T> {
+impl<T: Add<Output = T> + Mul<Output = T> + Clone + Zero + PartialOrd + Signed> Mul for Vector<T> {
     type Output = T;
 
     fn mul(self, other: Vector<T>) -> T {
         assert_eq!(self.n, other.n, "Dimesions mismatch: {} & {}", self.n, other.n);
 
-        let mut result = T::default();
+        let mut result = T::zero();
         for i in 0..self.n {
             result = result + self[i].clone() * other[i].clone();
         }

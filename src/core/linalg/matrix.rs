@@ -1,5 +1,6 @@
 use std::ops::{ Index, IndexMut, Add, Mul };
 use std::cmp::min;
+use num_traits::Zero;
 
 pub struct Matrix<T> {
     pub n: usize,
@@ -7,14 +8,14 @@ pub struct Matrix<T> {
     values: Vec<Vec<T>>,
 }
 
-impl<T: Clone + Default> Matrix<T> {
+impl<T: Clone + Zero> Matrix<T> {
 
     pub fn new(n: usize, m: usize) -> Self {
-        Matrix { n: n, m: m, values: vec![vec![T::default(); m]; n] }
+        Matrix { n: n, m: m, values: vec![vec![T::zero(); m]; n] }
     }
 
     pub fn newDiagonal(n: usize, m: usize, diagonal: T) -> Self {
-        let mut values = vec![vec![T::default(); m]; n];
+        let mut values = vec![vec![T::zero(); m]; n];
         for t in 0..min(n, m) {
             values[t][t] = diagonal.clone();
         }
@@ -53,7 +54,7 @@ impl<T> IndexMut<(usize, usize)> for Matrix<T> {
     }
 }
 
-impl<T: Add<Output = T> + Clone + Default> Add for Matrix<T> {
+impl<T: Add<Output = T> + Clone + Zero> Add for Matrix<T> {
     type Output = Matrix<T>;
 
     fn add(self, other: Matrix<T>) -> Matrix<T> {
@@ -71,7 +72,7 @@ impl<T: Add<Output = T> + Clone + Default> Add for Matrix<T> {
     }
 }
 
-impl<T: Add<Output = T> + Mul<Output = T> + Clone + Default> Mul for Matrix<T> {
+impl<T: Add<Output = T> + Mul<Output = T> + Clone + Zero> Mul for Matrix<T> {
     type Output = Matrix<T>;
 
     fn mul(self, other: Matrix<T>) -> Matrix<T> {

@@ -3,6 +3,7 @@ use crate::core::linalg::tridiagonal_system::TridiagonalSystem;
 use tokio_tungstenite::{accept_async, tungstenite::Result};
 use futures_util::{SinkExt, StreamExt};
 use serde_json::{json, Value};
+use crate::core::math::lfloat::Lfloat;
 
 pub struct WSHandler {
     clients: usize,
@@ -54,7 +55,8 @@ impl WSHandler {
                                                 "result": result,
                                                 // "rightSide": rightSide,
                                                 // "operated": operated,
-                                                "residual": residual
+                                                "residual": residual,
+                                                "norm": residual.norm()
                                             });
                                             sender.send(output.to_string().into()).await?;
                                         },
@@ -73,7 +75,7 @@ impl WSHandler {
 
         }
 
-        fn selectTest(test: &String) -> Result<TridiagonalSystem<f64>, &str> {
+        fn selectTest(test: &String) -> Result<TridiagonalSystem<Lfloat>, &str> {
             let path = format!("tests/tridiagonal/{}.txt", test);
             Ok(TridiagonalSystem::load(&path).expect("Error loading test"))
         }
