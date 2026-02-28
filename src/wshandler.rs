@@ -1,9 +1,9 @@
 use tokio::net::TcpStream;
-use crate::core::linalg::tridiagonal_system::TridiagonalSystem;
-use tokio_tungstenite::{accept_async, tungstenite::Result};
+use tokio_tungstenite::{accept_async, tungstenite::Result, tungstenite::Message};
 use futures_util::{SinkExt, StreamExt};
-use serde_json::{json, Value};
-use crate::core::math::lfloat::Lfloat;
+use serde_json::{Value, from_value, to_string, json};
+use crate::tasks::tridiagonal::{TestTridiagonalParams, TridiagonalTasks};
+use tokio::sync::mpsc;
 
 pub struct WSHandler {
     clients: usize,
@@ -17,70 +17,129 @@ impl WSHandler {
         }
     }
 
+    fn execute(action: &str, id: &str, params: &Value) -> Option<String> {
+        match action {
+            "test" => {
+                let data: TestTridiagonalParams = from_value(params.clone()).unwrap();
+                let result = TridiagonalTasks::test(&data).unwrap();
+                let mut json: Value = json!(result);
+                let ans = json!({
+                    "id": id,
+                    "result": result
+                });
+                Some(serde_json::to_string(&ans).unwrap())
+            },
+            _ => None
+        }
+    }
+
     // TODO: add query indexing
     pub async fn handler(&self, stream: TcpStream) -> Result<()> {
         let ws_stream = accept_async(stream).await?;
         println!("Connection");
 
-        let (mut sender, mut receiver) = ws_stream.split();
+        let (mut write, mut read) = ws_stream.split();
+        let (tx, mut rx) = mpsc::unbounded_channel::<String>();
 
-        while let Some(raw) = receiver.next().await {
-            let raw = raw?;
-            
-            if !raw.is_text() {
-                continue;
-            }
-
-            let rawjson = raw.to_text().expect("Is not a valid JSON");
-            let json = serde_json::from_str::<Value>(rawjson).expect("Can't parse JSON");
-
-            if let Some(action_val) = json.get("action") {
-                if let Some(action) = action_val.as_str() {
-                    match action {
-                        "test" => {
-                            if let Some(test_val) = json.get("test") {
-                                if let Some(test) = test_val.as_str() {
-                                    match selectTest(&String::from(test)) {
-                                        Ok(system) => {
-                                            let t1 = system.checkT1();
-                                            let t2 = system.checkT2();
-                                            // TODO: add error handler
-                                            let result = system.solve().expect("Can't solve system");
-                                            let operated = &system * &result;
-                                            let rightSide = system.getRight();
-                                            let residual = &operated - &rightSide;
-                                            let output = json!({
-                                                "th1": t1,
-                                                "th2": t2,
-                                                "result": result,
-                                                // "rightSide": rightSide,
-                                                // "operated": operated,
-                                                "residual": residual,
-                                                "norm": residual.norm()
-                                            });
-                                            sender.send(output.to_string().into()).await?;
-                                        },
-                                        Err(e) => {
-                                            sender.send(e.into()).await?;
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        // TODO: refactor
-                        _ => sender.send("Unknown action".into()).await?
-                    }
+        let send_task = tokio::spawn(async move {
+            while let Some(msg) = rx.recv().await {
+                if let Err(e) = write.send(Message::Text(msg.into())).await {
+                    eprintln!("Send error: {}", e);
+                    break;
                 }
             }
+        });
 
-        }
+        while let Some(raw) = read.next().await {
+            let raw = raw.expect("Read error");
+            if let Message::Text(msg) = raw {
+                let json: Value = match serde_json::from_str(&*msg) {
+                    Ok(v) => v,
+                    Err(_) => {
+                        continue;
+                    }
+                };
+                if let (Some(action), Some(id), Some(params)) = (
+                    json.get("action").and_then(|v| v.as_str()),
+                    json.get("id").and_then(|v| v.as_str()),
+                    json.get("params")
+                ) {
+                    let action = action.to_string();
+                    let id = id.to_string();
+                    let params = params.clone();
+                    let tx = tx.clone();
 
-        fn selectTest(test: &String) -> Result<TridiagonalSystem<Lfloat>, &str> {
-            let path = format!("tests/tridiagonal/{}.txt", test);
-            Ok(TridiagonalSystem::load(&path).expect("Error loading test"))
+                    tokio::spawn(async move {
+                        if let Some(result) = WSHandler::execute(&action, &id, &params) {
+                            tx.send(result.into())
+                        } else {
+                            Ok({})
+                        }
+                    });
+
+                } else {
+                    // error callback
+                }
+            } else {
+                // error callback
+            }
         }
 
         Ok(())
+
+        // while let Some(raw) = receiver.next().await {
+        //     let raw = raw?;
+            
+        //     if !raw.is_text() {
+        //         continue;
+        //     }
+
+        //     let rawjson = raw.to_text().expect("Is not a valid JSON");
+        //     let json = serde_json::from_str::<Value>(rawjson).expect("Can't parse JSON");
+
+        //     if let Some(action_val) = json.get("action") {
+        //         if let Some(action) = action_val.as_str() {
+        //             match action {
+        //                 "test" => {
+        //                     if let Some(test_val) = json.get("test") {
+        //                         if let Some(test) = test_val.as_str() {
+        //                             match selectTest(&String::from(test)) {
+        //                                 Ok(system) => {
+        //                                     let t1 = system.checkT1();
+        //                                     let t2 = system.checkT2();
+        //                                     // TODO: add error handler
+        //                                     let result = system.solve().expect("Can't solve system");
+        //                                     let operated = &system * &result;
+        //                                     let rightSide = system.getRight();
+        //                                     let residual = &operated - &rightSide;
+        //                                     let output = json!({
+        //                                         "th1": t1,
+        //                                         "th2": t2,
+        //                                         "result": result,
+        //                                         // "rightSide": rightSide,
+        //                                         // "operated": operated,
+        //                                         "residual": residual,
+        //                                         "norm": residual.norm()
+        //                                     });
+        //                                     sender.send(output.to_string().into()).await?;
+        //                                 },
+        //                                 Err(e) => {
+        //                                     sender.send(e.into()).await?;
+        //                                 }
+        //                             }
+        //                         }
+        //                     }
+        //                 },
+        //                 // TODO: refactor
+        //                 _ => sender.send("Unknown action".into()).await?
+        //             }
+        //         }
+            // }
+
     }
+    // fn selectTest(test: &String) -> Result<TridiagonalSystem<Lfloat>, &str> {
+    //     let path = format!("tests/tridiagonal/{}.txt", test);
+    //     Ok(TridiagonalSystem::load(&path).expect("Error loading test"))
+    // }
 
 }

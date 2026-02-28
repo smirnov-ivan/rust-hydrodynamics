@@ -1,6 +1,7 @@
 mod core;
 mod config;
 mod wshandler;
+mod tasks;
 
 use crate::config::Config;
 use crate::wshandler::WSHandler;
